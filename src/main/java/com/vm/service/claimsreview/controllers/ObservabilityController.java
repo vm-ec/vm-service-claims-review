@@ -9,11 +9,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/ai")
-public class HealthController {
+@RequestMapping("/observe")
+public class ObservabilityController {
+	
+	@GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("message", "Service is running");
+
+        return ResponseEntity.ok(response);
+    }
 	
 	@GetMapping("/metrics")
-    public ResponseEntity<Map<String, String>> healthCheck() {
+    public ResponseEntity<Map<String, String>> getMetrics() {
 
         Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
