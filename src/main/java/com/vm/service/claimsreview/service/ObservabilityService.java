@@ -1,7 +1,10 @@
 package com.vm.service.claimsreview.service;
 
+import org.springframework.stereotype.Service;
+
 import java.util.Map;
 
+@Service
 public class ObservabilityService {
     public Map<String, String> getObservabilityContext() {
         // Implementation to retrieve observability context
