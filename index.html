@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>VM Service – Claims Review API Index</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 24px;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        p {
+            color: #4b5563;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background-color: #111827;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        footer {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+
+<h1>VM Service – Claims Review APIs</h1>
+<p>
+    This page provides a consolidated view of all available operational and service health APIs
+    exposed by the <strong>vm-service-claims-review</strong> service.
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Link</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge">Observability</span></td>
+            <td>/observe/health</td>
+            <td>Application health check endpoint used by monitoring systems</td>
+            <td>
+                <a href="https://vm-service-claims-review-uiui.onrender.com/observe/health"
+                   target="_blank">
+                    Open
+                </a>
+            </td>
+        </tr>
+
+        <tr>
+            <td><span class="badge">Observability</span></td>
+            <td>/observe/metrics</td>
+            <td>Exposes application metrics for monitoring and analysis</td>
+            <td>
+                <a href="https://vm-service-claims-review-uiui.onrender.com/observe/metrics"
+                   target="_blank">
+                    Open
+                </a>
+            </td>
+        </tr>
+
+        <tr>
+            <td><span class="badge">Service</span></td>
+            <td>/claimsreview/health</td>
+            <td>Claims Review service health validation endpoint</td>
+            <td>
+                <a href="https://vm-service-claims-review-uiui.onrender.com/claimsreview/health"
+                   target="_blank">
+                    Open
+                </a>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<footer>
+    © VM Technology Solution Center • Claims Review APIs
+</footer>
+
+</body>
+</html>

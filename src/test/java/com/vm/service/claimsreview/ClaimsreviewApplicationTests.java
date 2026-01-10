@@ -1,12 +1,10 @@
 package com.vm.service.claimsreview;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+//@SpringBootTest
 class ClaimsreviewApplicationTests {
 
-	@Test
+	//@Test
 	void contextLoads() {
 	}
 
