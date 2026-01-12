@@ -100,11 +100,11 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Metrics (optional) -->
+		<!-- Metrics (optional) 
 		<dependency>
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-registry-datadog</artifactId>
-		</dependency>
+		</dependency> -->
 
 	</dependencies>
 
