@@ -2,13 +2,15 @@ package com.vm.service.claimsreview.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 public class AiMetricsService {
 
-    private static final String METRICS_URL = "https://enzymolytic-cristiano-wartier.ngrok-free.dev/json_metrics";
+    @Value("${aimetrics.url}")
+    private String metricsUrl;
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -21,10 +23,10 @@ public class AiMetricsService {
     public JsonNode fetchRawMetrics() {
 
         String response = webClient.get()
-                .uri(METRICS_URL)
+                .uri(metricsUrl)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block();   // OK for dashboard use
+                .block();
 
         try {
             return objectMapper.readTree(response);

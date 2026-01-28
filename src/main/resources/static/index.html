@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Apps| Observability Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* --- 1. RESET & VARIABLES --- */
+        :root {
+          --bg-color: #0f172a;
+          --card-bg: #1e293b;
+          --card-border: #334155;
+          --text-main: #f8fafc;
+          --text-muted: #94a3b8;
+          --accent-blue: #3b82f6;
+          --accent-purple: #8b5cf6;
+          --status-green: #10b981;
+          --status-red: #ef4444;
+          --spacing-md: 1.5rem;
+          --border-radius: 12px;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: 'Inter', sans-serif;
+          background-color: var(--bg-color);
+          color: var(--text-main);
+          -webkit-font-smoothing: antialiased;
+          line-height: 1.5;
+        }
+
+        /* --- HEADER --- */
+        header { display:flex; justify-content:space-between; align-items:center; padding:1rem 2rem; background: rgba(15,23,42,0.95); border-bottom:1px solid var(--card-border); position:sticky; top:0; z-index:999; backdrop-filter: blur(8px);}
+        .brand { display:flex; align-items:center; gap:12px; }
+        .logo { width:40px; height:40px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; color:white; }
+        .brand-text h1 { margin:0; font-size:1rem; font-weight:600; }
+        .brand-text span { font-size:0.75rem; color: var(--text-muted); display:block; }
+        .controls { display:flex; gap:1rem; align-items:center; }
+        .toggle-switch { background:#020617; border:1px solid var(--card-border); border-radius:8px; padding:4px; display:flex; }
+        .toggle-switch button { background:transparent; border:none; color:var(--text-muted); padding:6px 16px; font-size:0.85rem; cursor:pointer; border-radius:6px; transition:0.2s; }
+        .toggle-switch button.active { background:var(--card-bg); color:white; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+
+        /* --- DASHBOARD LAYOUT --- */
+        .container { max-width:1440px; margin:0 auto; padding:var(--spacing-md); display:flex; flex-direction:column; gap:var(--spacing-md); }
+        .kpi-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-md); }
+        .kpi-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); padding:1.5rem; display:flex; flex-direction:column; justify-content:space-between; min-height:140px; position:relative; }
+        .kpi-title { font-size:0.85rem; color: var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+        .kpi-value { font-size:2.2rem; font-weight:700; margin-top:10px; }
+        .kpi-trend { font-size:0.8rem; margin-top:auto; display:flex; gap:8px; align-items:center; }
+
+        /* --- CHARTS ROW --- */
+        .charts-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:var(--spacing-md);}
+        @media (max-width:1024px){ .charts-grid{ grid-template-columns:1fr;} }
+        .chart-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); padding:1.25rem; display:flex; flex-direction:column; }
+        .chart-card h3 { margin:0 0 1rem 0; font-size:0.95rem; font-weight:600; color:var(--text-muted); }
+        .canvas-wrapper { position:relative; height:200px; width:100%; transition: all 0.3s ease; }
+
+        /* --- BOTTOM SECTION --- */
+        .bottom-split { display:grid; grid-template-columns:2fr 1fr; gap:var(--spacing-md);}
+        @media (max-width:1024px){ .bottom-split{ grid-template-columns:1fr; } }
+        .table-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); overflow:hidden; display:flex; flex-direction:column; }
+        .table-header { padding:1rem 1.5rem; border-bottom:1px solid var(--card-border); font-weight:600; font-size:1rem; }
+        .table-scroll { overflow-x:auto; width:100%; }
+        table { width:100%; border-collapse:collapse; min-width:600px; }
+        th, td { padding:1rem 1.5rem; text-align:left; border-bottom:1px solid var(--card-border); }
+        th { font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); background: rgba(0,0,0,0.1); }
+        td { font-size:0.9rem; }
+        tr:hover { background: rgba(255,255,255,0.02); cursor:pointer; }
+        .tag { padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; display:inline-block; }
+        .tag.llm { background: rgba(139,92,246,0.15); color:#a78bfa; border:1px solid rgba(139,92,246,0.2);}
+        .tag.db { background: rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.2);}
+
+        /* Logs Panel */
+        .logs-card { background:#0b1120; border:1px solid var(--card-border); border-radius:var(--border-radius); display:flex; flex-direction:column; }
+        .logs-title { padding:1rem; border-bottom:1px solid var(--card-border); font-size:0.85rem; font-weight:600; color:var(--text-muted); }
+        .terminal { flex:1; overflow-y:auto; padding:1rem; font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#a5b4fc; }
+        .log-line { margin-bottom:8px; display:flex; gap:10px; }
+        .log-time { color:var(--text-muted); min-width:60px; }
+        
+        /* Custom scrollbar for terminal */
+        .terminal::-webkit-scrollbar { width:6px; }
+        .terminal::-webkit-scrollbar-track { background:transparent; }
+        .terminal::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+        .terminal::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+
+        /* --- Live Status --- */
+        .live { background: rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color: var(--status-green); padding:5px 12px; border-radius:20px; font-size:0.75rem; font-weight:600; display:flex; align-items:center; gap:8px; text-transform:uppercase; margin-left:20px;}
+        .status-dot { width:8px; height:8px; background:var(--status-green); border-radius:50%; animation:pulse 2s infinite;}
+        @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.5;} }
+        
+        /* Custom scrollbar for latency feed */
+        #latencyWrapper::-webkit-scrollbar { width:6px; }
+        #latencyWrapper::-webkit-scrollbar-track { background:transparent; }
+        #latencyWrapper::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+        #latencyWrapper::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+    </style>
+
+<body>
+
+<header>
+    <div class="brand">
+        <div class="logo">AI</div>
+        <div class="brand-text">
+            <h1>AI Apps Observability </h1>
+            <span>Dynamic Data Stream</span>
+        </div>
+        <div class="live">
+            <div class="status-dot"></div>LIVE
+        </div>
+        <div id="lastUpdated" style="font-size:0.75rem; color:var(--text-muted); margin-left:1rem;">Updated: --</div>
+    </div>
+    <div class="controls">
+        <div class="toggle-switch">
+            <button class="active" onclick="setPersona('support')">Support</button>
+            <button onclick="setPersona('exec')">Executive</button>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="kpi-grid" id="kpisSection">
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpi1Title">Total Requests</span>
+            <div class="kpi-value" id="kpi1Value">--</div>
+            <div class="kpi-trend" id="kpi1Trend"></div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpi2Title">Avg Latency</span>
+            <div class="kpi-value" id="kpi2Value">--</div>
+            <div class="kpi-trend" id="kpi2Trend"></div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpi3Title">Error Rate</span>
+            <div class="kpi-value" id="kpi3Value" style="color:var(--status-red)">--</div>
+            <div class="kpi-trend" id="kpi3Trend"></div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpi4Title">Accuracy</span>
+            <div class="kpi-value" id="kpi4Value" style="color:var(--accent-purple)">--</div>
+            <div class="kpi-trend" id="kpi4Trend"></div>
+        </div>
+    </div>
+
+    <div class="charts-grid" id="analyticsSection">
+        <div class="chart-card">
+            <h3>Token Consumption (Input/Output)</h3>
+            <div class="canvas-wrapper">
+                <canvas id="tokenChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>Model Distribution</h3>
+            <div class="canvas-wrapper" style="width:70%; margin:0 auto;">
+                <canvas id="modelChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card" id="latencyCard">
+            <h3>Live Latency Feed (ms)</h3>
+            <div class="canvas-wrapper" id="latencyWrapper" style="height:200px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent;">
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div class="chart-card">
+            <h3>Daily Cost Analysis</h3>
+            <div class="canvas-wrapper" style="width:70%; margin:0 auto;">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+
+        <div class="logs-card" style="height:280px;">
+            <div class="logs-title">System Event Stream</div>
+            <div class="terminal" id="logs" style="height:200px; overflow-y:auto;">
+                <div class="log-line">
+                    <span class="log-time">10:00:05</span>
+                    <span>Dashboard initialized.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="metricsGrid" style="display:flex; flex-direction:column; gap:1.5rem;">
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:8082/metrics/dashboard";
+    let persona = 'support';
+    let latencyData = Array(20).fill(50);
+    let originalLatencyData = [...latencyData];
+    let latencyChart = null;
+
+    // Chart Defaults
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.borderColor = '#334155';
+    Chart.defaults.font.family = 'Inter';
+    Chart.register(ChartDataLabels);
+
+    // 1️⃣ Live Latency Chart
+    latencyChart = new Chart(document.getElementById('latencyChart'), {
+        type:'line',
+        data: { labels: Array(20).fill(''), datasets:[{
+            data: latencyData,
+            borderColor:'#3b82f6',
+            borderWidth:3,
+            backgroundColor:'rgba(59,130,246,0.05)',
+            fill:true,
+            tension:0.5,
+            pointRadius:0
+        }]},
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{legend:{display:false}, datalabels:{display:false}},
+            scales:{
+                x:{display:true, grid:{color:'rgba(51,65,85,0.5)', drawBorder:false}},
+                y:{beginAtZero:true, grid:{color:'rgba(51,65,85,0.5)', drawBorder:false}}
+            },
+            animation:{duration:750, easing:'easeInOutQuad'}
+        }
+    });
+
+    // Other charts (Token, Model, Cost)
+    const tokenChart = new Chart(document.getElementById('tokenChart'), {
+        type:'bar',
+        data:{ labels:['10:00','10:05','10:10','10:15','10:20'],
+            datasets:[
+                {label:'Input', data:[150,230,180,320,250], backgroundColor:'#8b5cf6'},
+                {label:'Output', data:[100,150,120,200,180], backgroundColor:'#3b82f6'}
+            ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{datalabels:{display:false}}, scales:{x:{stacked:true},y:{stacked:true, grid:{display:false}}} }
+    });
+
+    const modelChart = new Chart(document.getElementById('modelChart'), {
+        type:'doughnut',
+        data:{ labels:['Gemini','Gpt-4','Claude'], datasets:[{data:[60,25,15], backgroundColor:['#3b82f6','#10b981','#f59e0b'], borderWidth:0}] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10}}, datalabels:{color:'#fff', font:{weight:'bold', size:16}, formatter:(val)=>val+'%'}} }
+    });
+
+    const costChart = new Chart(document.getElementById('costChart'), {
+        type:'line',
+        data:{ labels:['Mon','Tue','Wed','Thu','Fri'], datasets:[{label:'Cost ($)', data:[120,132,101,134,90], borderColor:'#10b981', tension:0.4}] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, datalabels:{display:false}}, scales:{y:{grid:{display:false}}} }
+    });
+
+    // Persona Switch
+    function setPersona(p){
+        persona=p;
+        document.querySelectorAll('.toggle-switch button').forEach(b=>b.classList.remove('active'));
+        event.target.classList.add('active');
+        const metricsGrid = document.getElementById('metricsGrid');
+        const analytics = document.getElementById('analyticsSection');
+        if(p==='exec'){ metricsGrid.style.display='none'; analytics.style.display='grid'; }
+        else{ metricsGrid.style.display='flex'; analytics.style.display='grid'; }
+    }
+
+    // Fetch data & render
+    function fetchData(){
+        fetch(API_URL)
+        .then(res=>res.json())
+        .then(data=>{
+            renderKPIs(data);
+            renderTables(data);
+            document.getElementById('lastUpdated').innerText='Updated: '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})+' IST';
+        })
+        .catch(err=>{
+            console.warn("API Error (Using Mock for Demo)", err);
+            renderKPIs(mockData);
+            renderTables(mockData);
+            document.getElementById('lastUpdated').innerText='Updated: '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})+' IST (Mock)';
+        });
+    }
+
+    function renderKPIs(data){
+        if(data.meta && data.meta.kpis){
+            data.meta.kpis.forEach((kpi, idx)=>{
+                const t=document.getElementById(`kpi${idx+1}Title`);
+                const v=document.getElementById(`kpi${idx+1}Value`);
+                const trend=document.getElementById(`kpi${idx+1}Trend`);
+                if(t) t.innerText=kpi.title;
+                if(v) v.innerText=kpi.value;
+
+                // Generate dynamic trend
+                if(trend){
+                    const delta = (Math.random()*20-5).toFixed(1);
+                    const isUp = delta > 0;
+                    const isStable = Math.abs(delta) < 2;
+                    let color, icon, text;
+
+                    if(idx===2){ // Error Rate - reverse logic
+                        color = isUp ? 'var(--status-red)' : 'var(--status-green)';
+                        icon = isStable ? 'ph-activity' : (isUp ? 'ph-warning' : 'ph-trend-down');
+                        text = isStable ? 'Stable' : (isUp ? `+${delta}% ⚠️` : `${delta}% improved`);
+                    } else {
+                        color = isUp ? 'var(--status-green)' : (isStable ? 'var(--accent-blue)' : 'var(--status-red)');
+                        icon = isStable ? 'ph-activity' : (isUp ? 'ph-trend-up' : 'ph-trend-down');
+                        text = isStable ? 'Stable' : `${isUp?'+':''}${delta}%`;
+                    }
+
+                    trend.style.color = color;
+                    trend.innerHTML = `<i class="ph ${icon}"></i> ${text}`;
+                }
+
+                // Update live latency chart with avg latency
+                if(kpi.id === 'avg_latency' && latencyChart){
+                    const latencyVal = parseFloat(kpi.value) || Math.random() * 100;
+                    latencyData.shift();
+                    latencyData.push(latencyVal);
+                    originalLatencyData = [...latencyData];
+                    latencyChart.data.datasets[0].data = latencyData;
+                    latencyChart.update();
+
+                    // Add log entry
+                    addLog(`Latency updated: ${latencyVal.toFixed(2)}ms`);
+                }
+            });
+        }
+    }
+
+    // --- NEW: Render Tables + Charts ---
+    function renderTables(data){
+        const grid=document.getElementById("metricsGrid");
+        grid.innerHTML="";
+        const tables=data.metricTables||[];
+        tables.forEach((table, tableIdx)=>{
+            const card=document.createElement("div");
+            card.style.cssText="display:grid; grid-template-columns:1fr 1fr; gap:1rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); overflow:hidden; grid-column-gap:0;";
+
+            let rowsHtml="";
+            if(table.rows && table.rows.length>0){
+                table.rows.forEach(row=>{
+                    let typeClass='tag';
+                    if(row.type && row.type.includes('LLM')) typeClass+=' llm';
+                    if(row.type && row.type.includes('DB')) typeClass+=' db';
+                    rowsHtml+=`
+                    <tr onclick="updateLatencyWave('${row.value}', '${row.name}')">
+                      <td><strong>${row.name || 'N/A'}</strong></td>
+                      <td><span class="${typeClass}">${row.type || 'Generic'}</span></td>
+                      <td>${row.labels || '-'}</td>
+                      <td style="font-family:'JetBrains Mono'">${row.value || '0'}</td>
+                    </tr>`;
+                });
+            }else{
+                rowsHtml=`<tr><td colspan="4" style="text-align:center;">No data available</td></tr>`;
+            }
+
+            const tableHtml=`
+              <div style="border-right:1px solid var(--card-border);">
+                <div class="table-header">${table.title}</div>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th width="30%">Metric</th>
+                        <th width="15%">Type</th>
+                        <th width="35%">Labels</th>
+                        <th width="20%">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+
+            const chartHtml=`
+              <div style="padding:1.5rem; display:flex; flex-direction:column;">
+                <h4 style="margin:0 0 1rem 0; font-size:0.9rem; color:var(--text-muted);">${table.title} Chart</h4>
+                <div style="height:350px; position:relative;">
+                  <canvas id="chart_${tableIdx}"></canvas>
+                </div>
+              </div>
+            `;
+
+            card.innerHTML = tableHtml + chartHtml;
+            grid.appendChild(card);
+
+            // Create chart for this table
+            createTableChart(tableIdx, table);
+        });
+    }
+
+    function createTableChart(idx, table){
+        const canvas = document.getElementById(`chart_${idx}`);
+        if(!canvas || !table.rows || table.rows.length === 0) return;
+
+        const labels = table.rows.map(r => r.name || 'N/A');
+        const values = table.rows.map(r => parseFloat(r.value) || 0);
+
+        // Decide chart type based on table title
+        let chartType = 'bar';
+        let chartColor = '#3b82f6';
+
+        if(table.title.includes('Latency')){
+            chartType = 'line';
+            chartColor = '#8b5cf6';
+        } else if(table.title.includes('Token')){
+            chartType = 'bar';
+            chartColor = '#10b981';
+        } else if(table.title.includes('Benchmark')){
+            chartType = 'radar';
+            chartColor = '#f59e0b';
+        }
+
+        new Chart(canvas, {
+            type: chartType,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: table.title,
+                    data: values,
+                    backgroundColor: chartType === 'line' ? 'rgba(139,92,246,0.1)' : chartColor,
+                    borderColor: chartColor,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: chartType === 'line'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, datalabels: { display: false } },
+                scales: chartType === 'radar' ? {} : {
+                    y: { beginAtZero: true, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // --- UPDATE LATENCY WAVE ON CLICK ---
+    function updateLatencyWave(val, name){
+        if(!latencyChart) return;
+        let newVal = parseFloat(val) || 50;
+        latencyData.shift();
+        latencyData.push(newVal);
+        originalLatencyData = [...latencyData];
+        latencyChart.data.datasets[0].data = latencyData;
+        latencyChart.update();
+        addLog(`Metric clicked: ${name} = ${newVal}`);
+    }
+
+    function addLog(message){
+        const terminal = document.getElementById('logs');
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        const time = new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'});
+        line.innerHTML = `<span class="log-time">${time}</span><span>${message}</span>`;
+        terminal.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+
+        // Keep only last 50 logs
+        const logs = terminal.querySelectorAll('.log-line');
+        if(logs.length > 50){
+            logs[0].remove();
+        }
+    }
+
+    // --- MOCK DATA for Demo if API fails ---
+    const mockData={
+        meta:{
+            kpis:[
+                {title:"Total Requests", value:"1023"},
+                {title:"Avg Latency", value:"234"},
+                {title:"Error Rate", value:"2.3%"},
+                {title:"Accuracy", value:"97%"}
+            ]
+        },
+        metricTables:[
+            {title:"LLM Metrics", rows:[
+                {name:"Gemini Request","type":"LLM","labels":"model:Gemini","value":234},
+                {name:"Claude Request","type":"LLM","labels":"model:claude","value":198}
+            ]},
+            {title:"DB Metrics", rows:[
+                {name:"User Table Query","type":"DB","labels":"table:users","value":120},
+                {name:"Orders Table Query","type":"DB","labels":"table:orders","value":95}
+            ]}
+        ]
+    };
+
+    function initDemo(){
+        renderKPIs(mockData);
+        renderTables(mockData);
+    }
+
+    setInterval(fetchData,10000);
+    window.onload=()=>initDemo();
+</script>
+
+</body>
+</html>
