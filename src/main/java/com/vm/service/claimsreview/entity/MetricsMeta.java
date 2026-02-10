@@ -1,12 +1,17 @@
 package com.vm.service.claimsreview.entity;
 
-import com.vm.service.claimsreview.entity.KpiMetric;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.List;
 
 @Entity
 @Table(name = "metrics_meta")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MetricsMeta {
 
     @Id
@@ -21,26 +26,4 @@ public class MetricsMeta {
             orphanRemoval = true
     )
     private List<KpiMetric> kpis;
-
-    /* ===== Getters & Setters ===== */
-
-    public Long getId() {
-        return id;
-    }
-
-    public Instant getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public List<KpiMetric> getKpis() {
-        return kpis;
-    }
-
-    public void setKpis(List<KpiMetric> kpis) {
-        this.kpis = kpis;
-    }
 }

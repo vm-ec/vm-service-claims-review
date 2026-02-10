@@ -17,7 +17,7 @@ public class AiMetricsController {
 
     private final AiMetricsService service;
 
-    @GetMapping("/dashboard-original")
+    @GetMapping("/dashboard/original")
     public ResponseEntity<JsonNode> getMetrics() {
         return ResponseEntity.ok(service.fetchRawMetrics());
     }

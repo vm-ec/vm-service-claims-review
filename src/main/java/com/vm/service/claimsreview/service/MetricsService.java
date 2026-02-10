@@ -4,20 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vm.service.claimsreview.dto.*;
 import com.vm.service.claimsreview.entity.MetricsResponse;
 import com.vm.service.claimsreview.repository.MetricsResponseRepository;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class MetricsService {
 
     private final MetricsResponseRepository repository;
     private final ObjectMapper objectMapper;
-
-    public MetricsService(MetricsResponseRepository repository, ObjectMapper objectMapper) {
-        this.repository = repository;
-        this.objectMapper = objectMapper;
-    }
 
     public MetricsResponseDTO getMetricsResponse() {
         MetricsResponse entity = repository.findTopByOrderByIdDesc()
@@ -27,55 +24,34 @@ public class MetricsService {
 
         // META
         if (entity.getMeta() != null) {
-            MetaDTO metaDTO = new MetaDTO();
-            metaDTO.setTimestamp(entity.getMeta().getTimestamp());
-            if (entity.getMeta().getKpis() != null) {
-                metaDTO.setKpis(
-                        entity.getMeta().getKpis().stream().map(kpi -> {
-                            KpiDTO k = new KpiDTO();
-                            k.setId(kpi.getKpiId());
-                            k.setTitle(kpi.getTitle());
-                            k.setValue(kpi.getValue());
-                            k.setTrend(kpi.getTrend());
-                            k.setTrendType(kpi.getTrendType());
-                            k.setIsFinancial(kpi.getIsFinancial());
-                            return k;
-                        }).collect(Collectors.toList())
-                );
-            }
+            MetaDTO metaDTO = new MetaDTO(
+                entity.getMeta().getKpis() != null ?
+                    entity.getMeta().getKpis().stream().map(kpi ->
+                        new KpiDTO(kpi.getKpiId(), kpi.getTitle(), kpi.getValue(),
+                            kpi.getTrend(), kpi.getTrendType(), kpi.getIsFinancial())
+                    ).collect(Collectors.toList()) : null,
+                entity.getMeta().getTimestamp()
+            );
             dto.setMeta(metaDTO);
         }
 
         // COLUMNS
         if (entity.getColumns() != null) {
             dto.setColumns(
-                    entity.getColumns().stream().map(col -> {
-                        ColumnDTO c = new ColumnDTO();
-                        c.setKey(col.getColumnKey());
-                        c.setLabel(col.getLabel());
-                        c.setType(col.getType());
-                        return c;
-                    }).collect(Collectors.toList())
+                entity.getColumns().stream().map(col ->
+                    new ColumnDTO(col.getColumnKey(), col.getLabel(), col.getType())
+                ).collect(Collectors.toList())
             );
         }
 
         // ROWS
         if (entity.getRows() != null) {
             dto.setRows(
-                    entity.getRows().stream().map(row -> {
-                        RowDTO r = new RowDTO();
-                        r.setId(row.getId());
-                        r.setName(row.getName());
-                        r.setStatus(row.getStatus());
-                        r.setTech(row.getTech());
-                        r.setModel(row.getModel());
-                        r.setLatency(row.getLatency());
-                        r.setRequests(row.getRequests());
-                        r.setDrift(row.getDrift());
-                        r.setCost(row.getCost());
-                        r.setLogs(row.getLogs());
-                        return r;
-                    }).collect(Collectors.toList())
+                entity.getRows().stream().map(row ->
+                    new RowDTO(row.getId(), row.getName(), row.getStatus(), row.getTech(),
+                        row.getModel(), row.getLatency(), row.getRequests(), row.getDrift(),
+                        row.getCost(), row.getLogs())
+                ).collect(Collectors.toList())
             );
         }
 

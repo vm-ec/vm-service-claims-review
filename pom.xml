@@ -18,7 +18,9 @@
 		<license/>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>srivani</name>
+		</developer>
 	</developers>
 	<scm>
 		<connection/>
@@ -27,7 +29,7 @@
 		<url/>
 	</scm>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<dependency>

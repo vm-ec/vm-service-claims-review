@@ -2,134 +2,39 @@ package com.vm.service.claimsreview.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vm.service.claimsreview.dto.*;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
+@AllArgsConstructor
 public class MetricsParsingService {
 
     private final AiMetricsService aiMetricsService;
-
-    public MetricsParsingService(AiMetricsService aiMetricsService) {
-        this.aiMetricsService = aiMetricsService;
-    }
 
     public MetricsResponseDTO fetchAndParseDashboard() {
         try {
             return parseMetrics(aiMetricsService.fetchRawMetrics());
         } catch (Exception e) {
-            return getHardCodedData();
+            return MetricsParsingServiceHelper.getHardCodedData();
         }
-    }
-
-    private MetricsResponseDTO getHardCodedData() {
-        MetricsResponseDTO dto = new MetricsResponseDTO();
-        
-        MetaDTO meta = new MetaDTO();
-        List<KpiDTO> kpis = new ArrayList<>();
-        kpis.add(kpi("total_requests", "Total Requests", 85));
-        kpis.add(kpi("avg_latency", "Average Latency", 4.32));
-        kpis.add(kpi("error_count", "Errors", 0));
-        kpis.add(kpi("benchmark_accuracy", "Accuracy", 100));
-        meta.setKpis(kpis);
-        dto.setMeta(meta);
-        
-        dto.setColumns(List.of(
-                column("metric", "Metric", "string"),
-                column("model", "Model", "string"),
-                column("operation", "Operation", "string"),
-                column("value", "Value", "number"),
-                column("unit", "Unit", "string")
-        ));
-        
-        List<RowDTO> rows = new ArrayList<>();
-        rows.add(createTableRow(1, "Total Requests", "gemini", "classification", "85", "count"));
-        rows.add(createTableRow(2, "Average Latency", "gemini", "classification", "4.32", "seconds"));
-        rows.add(createTableRow(3, "P95 Latency", "gemini", "classification", "7.5", "seconds"));
-        rows.add(createTableRow(4, "P99 Latency", "gemini", "classification", "10", "seconds"));
-        rows.add(createTableRow(5, "Error Count", "gemini", "classification", "0", "count"));
-        rows.add(createTableRow(6, "Total Input Tokens", "gemini", "-", "118762", "tokens"));
-        rows.add(createTableRow(7, "Total Output Tokens", "gemini", "-", "4736", "tokens"));
-        dto.setRows(rows);
-        
-        List<MetricTableDTO> tables = new ArrayList<>();
-        
-        MetricTableDTO requestTable = table("AI Request Metrics");
-        requestTable.getRows().add(new MetricRowDTO("AI Request Metrics", "Total Requests", "gemini", "classification", "125", "count"));
-        requestTable.getRows().add(new MetricRowDTO("AI Request Metrics", "Error Count", "gemini", "classification", "0", "count"));
-        requestTable.getRows().add(new MetricRowDTO("AI Request Metrics", "Error Rate", "gemini", "classification", "0", "%"));
-        tables.add(requestTable);
-        
-        MetricTableDTO latencyTable = table("AI Latency Metrics");
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "Average Latency", "gemini", "classification", "4.35", "seconds"));
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "P95 Latency", "gemini", "classification", "7.5", "seconds"));
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "P99 Latency", "gemini", "classification", "10", "seconds"));
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "Latency Distribution (0-5s)", "gemini", "classification", "101", "requests"));
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "Latency Distribution (5-7.5s)", "gemini", "classification", "17", "requests"));
-        latencyTable.getRows().add(new MetricRowDTO("AI Latency Metrics", "Latency Distribution (7.5-10s)", "gemini", "classification", "7", "requests"));
-        tables.add(latencyTable);
-        
-        MetricTableDTO tokensTable = table("AI Token Usage Metrics");
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Total Input Tokens", "gemini", "total_input", "174650", "tokens"));
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Total Output Tokens", "gemini", "total_output", "6961", "tokens"));
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Prediction Input Tokens", "gemini", "prediction_input", "165575", "tokens"));
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Prediction Output Tokens", "gemini", "prediction_output", "575", "tokens"));
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Summary Input Tokens", "gemini", "summary_input", "9075", "tokens"));
-        tokensTable.getRows().add(new MetricRowDTO("AI Token Usage Metrics", "Summary Output Tokens", "gemini", "summary_output", "6386", "tokens"));
-        tables.add(tokensTable);
-        
-        MetricTableDTO benchmarkTable = table("AI Benchmark Metrics");
-        benchmarkTable.getRows().add(new MetricRowDTO("AI Benchmark Metrics", "Total Benchmark Runs", "-", "-", "25", "count"));
-        benchmarkTable.getRows().add(new MetricRowDTO("AI Benchmark Metrics", "Benchmark Accuracy", "-", "-", "100", "%"));
-        benchmarkTable.getRows().add(new MetricRowDTO("AI Benchmark Metrics", "Correct Results Count", "-", "-", "125", "count"));
-        benchmarkTable.getRows().add(new MetricRowDTO("AI Benchmark Metrics", "Average Benchmark Duration", "-", "-", "146.07", "seconds"));
-        tables.add(benchmarkTable);
-        
-        MetricTableDTO systemTable = table("Python / System Metrics");
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Objects Collected", "generation=0", "-", "18918", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Objects Collected", "generation=1", "-", "1624", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Objects Collected", "generation=2", "-", "96", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Collections", "generation=0", "-", "398", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Collections", "generation=1", "-", "36", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "GC Collections", "generation=2", "-", "3", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "Uncollectable Objects", "generation=0", "-", "0", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "Uncollectable Objects", "generation=1", "-", "0", "count"));
-        systemTable.getRows().add(new MetricRowDTO("Python / System Metrics", "Uncollectable Objects", "generation=2", "-", "0", "count"));
-        tables.add(systemTable);
-        
-        dto.setMetricTables(tables);
-        return dto;
-    }
-    
-    private RowDTO createTableRow(long id, String metric, String model, String operation, String value, String unit) {
-        RowDTO row = new RowDTO();
-        row.setId(id);
-        row.setName(metric);
-        row.setModel(model);
-        row.setTech(operation);
-        row.setLatency(value);
-        row.setRequests(unit);
-        row.setStatus("Healthy");
-        row.setDrift(null);
-        row.setCost(null);
-        row.setLogs(Collections.emptyList());
-        return row;
     }
 
     private MetricsResponseDTO parseMetrics(JsonNode root) {
 
-        MetricsResponseDTO dto = new MetricsResponseDTO();
         JsonNode metrics = root.path("metrics");
 
         if (!metrics.isArray()) {
-            MetaDTO meta = new MetaDTO();
-            meta.setKpis(Collections.emptyList());
-            dto.setMeta(meta);
-            dto.setColumns(Collections.emptyList());
-            dto.setRows(Collections.emptyList());
-            return dto;
+            return new MetricsResponseDTO(
+                new MetaDTO(Collections.emptyList(), null),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList()
+            );
         }
+        
+        MetricsResponseDTO dto = new MetricsResponseDTO();
 
         /* ===============================
            1. Dynamic aggregation bucket
@@ -209,8 +114,7 @@ public class MetricsParsingService {
                 .findFirst().orElse(0);
         kpis.add(kpi("benchmark_accuracy", "Accuracy", (long) benchmarkAccuracy));
 
-        MetaDTO meta = new MetaDTO();
-        meta.setKpis(kpis);
+        MetaDTO meta = new MetaDTO(kpis, null);
         dto.setMeta(meta);
         dto.setMetricTables(buildMetricTables(metrics));
 
@@ -247,16 +151,16 @@ public class MetricsParsingService {
                     .mapToDouble(Map.Entry::getValue).sum();
 
             if (rowRequests > 0) {
-                rows.add(createTableRow(id++, "Total Requests", model, operation, String.valueOf((long)rowRequests), "count"));
+                rows.add(new RowDTO(id++, "Total Requests", "Healthy", operation, model, String.valueOf((long)rowRequests), "count", null, null, Collections.emptyList()));
             }
             if (avgLatency > 0) {
-                rows.add(createTableRow(id++, "Average Latency", model, operation, String.valueOf(round(avgLatency)), "seconds"));
+                rows.add(new RowDTO(id++, "Average Latency", "Healthy", operation, model, String.valueOf(round(avgLatency)), "seconds", null, null, Collections.emptyList()));
             }
             if (totalInputTokens > 0) {
-                rows.add(createTableRow(id++, "Total Input Tokens", model, "-", String.valueOf((long)totalInputTokens), "tokens"));
+                rows.add(new RowDTO(id++, "Total Input Tokens", "Healthy", "-", model, String.valueOf((long)totalInputTokens), "tokens", null, null, Collections.emptyList()));
             }
             if (totalOutputTokens > 0) {
-                rows.add(createTableRow(id++, "Total Output Tokens", model, "-", String.valueOf((long)totalOutputTokens), "tokens"));
+                rows.add(new RowDTO(id++, "Total Output Tokens", "Healthy", "-", model, String.valueOf((long)totalOutputTokens), "tokens", null, null, Collections.emptyList()));
             }
         }
 
@@ -269,22 +173,11 @@ public class MetricsParsingService {
        =============================== */
 
     private KpiDTO kpi(String id, String title, Object value) {
-        KpiDTO k = new KpiDTO();
-        k.setId(id);
-        k.setTitle(title);
-        k.setValue(String.valueOf(value));
-        k.setTrend("N/A");
-        k.setTrendType("neutral");
-        k.setIsFinancial(false);
-        return k;
+        return new KpiDTO(id, title, String.valueOf(value), "N/A", "neutral", false);
     }
 
     private ColumnDTO column(String key, String label, String type) {
-        ColumnDTO c = new ColumnDTO();
-        c.setKey(key);
-        c.setLabel(label);
-        c.setType(type);
-        return c;
+        return new ColumnDTO(key, label, type);
     }
 
     private double round(double v) {
@@ -348,10 +241,7 @@ public class MetricsParsingService {
     }
 
     private MetricTableDTO table(String title) {
-        MetricTableDTO t = new MetricTableDTO();
-        t.setTitle(title);
-        t.setRows(new ArrayList<>());
-        return t;
+        return new MetricTableDTO(title, new ArrayList<>());
     }
 
     /* ===============================
