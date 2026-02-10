@@ -1,9 +1,15 @@
 package com.vm.service.claimsreview.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "kpi_metric")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class KpiMetric {
 
     @Id
@@ -25,66 +31,4 @@ public class KpiMetric {
     @ManyToOne
     @JoinColumn(name = "meta_id")
     private MetricsMeta meta;
-
-    /* ===== Getters & Setters ===== */
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getKpiId() {
-        return kpiId;
-    }
-
-    public void setKpiId(String kpiId) {
-        this.kpiId = kpiId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-    }
-
-    public String getTrend() {
-        return trend;
-    }
-
-    public void setTrend(String trend) {
-        this.trend = trend;
-    }
-
-    public String getTrendType() {
-        return trendType;
-    }
-
-    public void setTrendType(String trendType) {
-        this.trendType = trendType;
-    }
-
-    public Boolean getIsFinancial() {
-        return isFinancial;
-    }
-
-    public void setIsFinancial(Boolean isFinancial) {
-        this.isFinancial = isFinancial;
-    }
-
-    public MetricsMeta getMeta() {
-        return meta;
-    }
-
-    public void setMeta(MetricsMeta meta) {
-        this.meta = meta;
-    }
 }

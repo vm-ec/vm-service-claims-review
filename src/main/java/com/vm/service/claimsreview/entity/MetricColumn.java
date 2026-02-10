@@ -1,8 +1,14 @@
 package com.vm.service.claimsreview.entity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "metric_column")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MetricColumn {
 
     @Id
@@ -18,42 +24,4 @@ public class MetricColumn {
     @ManyToOne
     @JoinColumn(name = "metrics_response_id")
     private MetricsResponse metricsResponse;
-
-    /* ===== Getters & Setters ===== */
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getColumnKey() {
-        return columnKey;
-    }
-
-    public void setColumnKey(String columnKey) {
-        this.columnKey = columnKey;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public void setLabel(String label) {
-        this.label = label;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public MetricsResponse getMetricsResponse() {
-        return metricsResponse;
-    }
-
-    public void setMetricsResponse(MetricsResponse metricsResponse) {
-        this.metricsResponse = metricsResponse;
-    }
 }

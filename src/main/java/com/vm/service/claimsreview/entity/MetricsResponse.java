@@ -1,10 +1,16 @@
 package com.vm.service.claimsreview.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Entity
 @Table(name = "metrics_response")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MetricsResponse {
 
     @Id
@@ -28,34 +34,4 @@ public class MetricsResponse {
             orphanRemoval = true
     )
     private List<MetricRow> rows;
-
-    /* ===== Getters & Setters ===== */
-
-    public Long getId() {
-        return id;
-    }
-
-    public MetricsMeta getMeta() {
-        return meta;
-    }
-
-    public void setMeta(MetricsMeta meta) {
-        this.meta = meta;
-    }
-
-    public List<MetricColumn> getColumns() {
-        return columns;
-    }
-
-    public void setColumns(List<MetricColumn> columns) {
-        this.columns = columns;
-    }
-
-    public List<MetricRow> getRows() {
-        return rows;
-    }
-
-    public void setRows(List<MetricRow> rows) {
-        this.rows = rows;
-    }
 }
