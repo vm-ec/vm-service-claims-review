@@ -116,8 +116,8 @@
     </div>
     <div class="controls">
         <div class="toggle-switch">
-            <button class="active" onclick="setPersona('support')">Support</button>
-            <button onclick="setPersona('exec')">Executive</button>
+            <button class="active" onclick="setPersona('support')">Executive</button>
+            <button onclick="setPersona('exec')">Support</button>
         </div>
     </div>
 </header>
@@ -194,7 +194,8 @@
 </div>
 
 <script>
-    const API_URL = "http://localhost:8082/metrics/dashboard";
+    const API_URL = "http://localhost:8082/internal/metrics";
+
     let persona = 'support';
     let latencyData = Array(20).fill(50);
     let originalLatencyData = [...latencyData];
@@ -211,7 +212,7 @@
         type:'line',
         data: { labels: Array(20).fill(''), datasets:[{
             data: latencyData,
-            borderColor:'#3b82f6',
+            borderColor:'#06b6d4',
             borderWidth:3,
             backgroundColor:'rgba(59,130,246,0.05)',
             fill:true,
@@ -231,12 +232,16 @@
     });
 
     // Other charts (Token, Model, Cost)
+    let tokenTimeLabels = [];
+    let tokenInputData = [];
+    let tokenOutputData = [];
+    
     const tokenChart = new Chart(document.getElementById('tokenChart'), {
         type:'bar',
-        data:{ labels:['10:00','10:05','10:10','10:15','10:20'],
+        data:{ labels:tokenTimeLabels,
             datasets:[
-                {label:'Input', data:[150,230,180,320,250], backgroundColor:'#8b5cf6'},
-                {label:'Output', data:[100,150,120,200,180], backgroundColor:'#3b82f6'}
+                {label:'Input', data:tokenInputData, backgroundColor:'#06b6d4'},
+                {label:'Output', data:tokenOutputData, backgroundColor:'#a855f7'}
             ]
         },
         options:{ responsive:true, maintainAspectRatio:false, plugins:{datalabels:{display:false}}, scales:{x:{stacked:true},y:{stacked:true, grid:{display:false}}} }
@@ -244,7 +249,7 @@
 
     const modelChart = new Chart(document.getElementById('modelChart'), {
         type:'doughnut',
-        data:{ labels:['Gemini','Gpt-4','Claude'], datasets:[{data:[60,25,15], backgroundColor:['#3b82f6','#10b981','#f59e0b'], borderWidth:0}] },
+        data:{ labels:['Gemini','OpenAI','Claude'], datasets:[{data:[60,25,15], backgroundColor:['#06b6d4','#f59e0b','#ec4899'], borderWidth:0}] },
         options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10}}, datalabels:{color:'#fff', font:{weight:'bold', size:16}, formatter:(val)=>val+'%'}} }
     });
 
@@ -272,6 +277,7 @@
         .then(data=>{
             renderKPIs(data);
             renderTables(data);
+            updateCharts(data);
             document.getElementById('lastUpdated').innerText='Updated: '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})+' IST';
         })
         .catch(err=>{
@@ -282,6 +288,88 @@
         });
     }
 
+    function updateCharts(data){
+        // Update Model Distribution Chart
+        if(data.modelDistribution && data.modelDistribution.length > 0){
+            const labels = data.modelDistribution.map(m => {
+                const model = m.model.toLowerCase();
+                if(model.includes('gemini')) return 'Gemini';
+                if(model.includes('OpenAI') || model.includes('openai')) return 'OpenAI';
+                if(model.includes('claude')) return 'Claude';
+                return m.model.charAt(0).toUpperCase() + m.model.slice(1);
+            });
+            const values = data.modelDistribution.map(m => m.percentage);
+            
+            // Dynamic colors based on model
+            const colors = labels.map(label => {
+                if(label === 'Gemini') return '#06b6d4';
+                if(label === 'OpenAI') return '#f59e0b';
+                if(label === 'Claude') return '#ec4899';
+                return '#8b5cf6';
+            });
+            
+            modelChart.data.labels = labels;
+            modelChart.data.datasets[0].data = values;
+            modelChart.data.datasets[0].backgroundColor = colors;
+            modelChart.update();
+        }
+
+        // Update Token Chart - use real-time data or generate from metricTables
+        if(data.tokenUsage && data.tokenUsage.length > 0){
+            const timeLabels = data.tokenUsage.map(t => t.time || '');
+            const inputData = data.tokenUsage.map(t => t.input || 0);
+            const outputData = data.tokenUsage.map(t => t.output || 0);
+            tokenChart.data.labels = timeLabels;
+            tokenChart.data.datasets[0].data = inputData;
+            tokenChart.data.datasets[1].data = outputData;
+            tokenChart.update();
+        } else if(data.metricTables) {
+            // Extract token data from metricTables if tokenUsage not available
+            const tokenTable = data.metricTables.find(t => t.title && t.title.toLowerCase().includes('token'));
+            if(tokenTable && tokenTable.rows){
+                const currentTime = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', timeZone:'Asia/Kolkata'});
+                
+                let inputTokens = 0;
+                let outputTokens = 0;
+                
+                tokenTable.rows.forEach(row => {
+                    const name = (row.name || '').toLowerCase();
+                    const value = parseFloat(row.value) || 0;
+                    if(name.includes('input')) inputTokens += value;
+                    if(name.includes('output')) outputTokens += value;
+                });
+                
+                // Keep last 5 time points
+                tokenTimeLabels.push(currentTime);
+                tokenInputData.push(inputTokens);
+                tokenOutputData.push(outputTokens);
+                
+                if(tokenTimeLabels.length > 5){
+                    tokenTimeLabels.shift();
+                    tokenInputData.shift();
+                    tokenOutputData.shift();
+                }
+                
+                tokenChart.data.labels = tokenTimeLabels;
+                tokenChart.data.datasets[0].data = tokenInputData;
+                tokenChart.data.datasets[1].data = tokenOutputData;
+                tokenChart.update();
+            }
+        }
+
+        // Update Cost Chart if data available
+        if(data.costData){
+            const costLabels = data.costData.map(c => c.day || '');
+            const costValues = data.costData.map(c => c.cost || 0);
+            costChart.data.labels = costLabels;
+            costChart.data.datasets[0].data = costValues;
+            costChart.update();
+        }
+    }
+
+    // Store previous KPI values for trend calculation
+    let previousKPIValues = {};
+
     function renderKPIs(data){
         if(data.meta && data.meta.kpis){
             data.meta.kpis.forEach((kpi, idx)=>{
@@ -291,9 +379,17 @@
                 if(t) t.innerText=kpi.title;
                 if(v) v.innerText=kpi.value;
 
-                // Generate dynamic trend
+                // Calculate dynamic trend based on actual value changes
                 if(trend){
-                    const delta = (Math.random()*20-5).toFixed(1);
+                    const kpiKey = kpi.id || kpi.title;
+                    const currentValue = parseFloat(kpi.value) || 0;
+                    const previousValue = previousKPIValues[kpiKey] || currentValue;
+                    
+                    let delta = 0;
+                    if(previousValue !== 0){
+                        delta = ((currentValue - previousValue) / previousValue * 100).toFixed(1);
+                    }
+                    
                     const isUp = delta > 0;
                     const isStable = Math.abs(delta) < 2;
                     let color, icon, text;
@@ -310,6 +406,9 @@
 
                     trend.style.color = color;
                     trend.innerHTML = `<i class="ph ${icon}"></i> ${text}`;
+                    
+                    // Store current value for next comparison
+                    previousKPIValues[kpiKey] = currentValue;
                 }
 
                 // Update live latency chart with avg latency
@@ -385,18 +484,56 @@
 
             card.innerHTML = tableHtml + chartHtml;
             grid.appendChild(card);
-
-            // Create chart for this table
-            createTableChart(tableIdx, table);
         });
+
+        // Create charts after DOM is updated
+        setTimeout(() => {
+            tables.forEach((table, tableIdx) => {
+                createTableChart(tableIdx, table);
+            });
+        }, 100);
     }
+
+    // Store chart instances to destroy before recreating
+    let chartInstances = {};
 
     function createTableChart(idx, table){
         const canvas = document.getElementById(`chart_${idx}`);
         if(!canvas || !table.rows || table.rows.length === 0) return;
 
+        // Destroy existing chart if it exists
+        if(chartInstances[idx]){
+            chartInstances[idx].destroy();
+        }
+
         const labels = table.rows.map(r => r.name || 'N/A');
         const values = table.rows.map(r => parseFloat(r.value) || 0);
+
+        // Check for Error Metrics - use exact match
+        if(table.title === 'Error Metrics'){
+            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+            chartInstances[idx] = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, values.length),
+                        borderWidth: 2,
+                        borderColor: '#1e293b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, color: '#94a3b8' } },
+                        datalabels: { color: '#fff', font: { weight: 'bold', size: 14 }, formatter: (val) => val }
+                    }
+                }
+            });
+            return;
+        }
 
         // Decide chart type based on table title
         let chartType = 'bar';
@@ -413,7 +550,7 @@
             chartColor = '#f59e0b';
         }
 
-        new Chart(canvas, {
+        chartInstances[idx] = new Chart(canvas, {
             type: chartType,
             data: {
                 labels: labels,
