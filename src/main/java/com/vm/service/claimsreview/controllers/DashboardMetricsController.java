@@ -1,52 +1,31 @@
 package com.vm.service.claimsreview.controllers;
 
+import com.vm.service.claimsreview.response.ServiceResponse;
+import com.vm.service.claimsreview.service.DashboardMetricsService;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.client.WebClient;
-
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+
 
 @Slf4j
 @RestController
 @CrossOrigin
+@AllArgsConstructor
 public class DashboardMetricsController {
 
-    private final WebClient webClient;
-    private final AtomicReference<Map<String, Object>> storedMetrics = new AtomicReference<>();
-
-    @Value("${wrapper.service.url}")
-    private String wrapperServiceUrl;
-
-    public DashboardMetricsController(WebClient webClient) {
-        this.webClient = webClient;
-    }
+    private final DashboardMetricsService service;
 
     @GetMapping("/internal/metrics")
-    public String fetchMetrics() {
-        try {
-            log.info("Fetching metrics from wrapper service");
-            
-            String metrics = webClient.get()
-                    .uri(wrapperServiceUrl)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            
-            log.info("Metrics fetched successfully");
-            return metrics;
-            
-        } catch (Exception e) {
-            log.error("Failed to fetch metrics", e);
-            throw new RuntimeException("Failed to fetch metrics", e);
-        }
+    public ResponseEntity<Map<String, Object>> fetchMetrics() {
+        ServiceResponse<Map<String, Object>> response = service.getCurrentMetrics();
+        return ResponseEntity.status(response.getHttpStatus()).body(response.getData());
     }
 
     @PostMapping("/internal/metrics")
-    public void receiveMetrics(@RequestBody Map<String, Object> payload) {
-        log.info("Received metrics payload");
-        storedMetrics.set(payload);
-        log.debug("Metrics stored successfully");
+    public ResponseEntity<Void> receiveMetrics(@RequestBody Map<String, Object> payload) {
+        ServiceResponse<Void> response = service.processIncomingMetrics(payload);
+        return ResponseEntity.status(response.getHttpStatus()).build();
     }
 }

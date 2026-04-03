@@ -200,6 +200,7 @@
     let latencyData = Array(20).fill(50);
     let originalLatencyData = [...latencyData];
     let latencyChart = null;
+    let cacheVersion = Date.now(); // Force cache refresh
 
     // Chart Defaults
     Chart.defaults.color = '#64748b';
@@ -433,6 +434,13 @@
         grid.innerHTML="";
         const tables=data.metricTables||[];
         tables.forEach((table, tableIdx)=>{
+            // Check if it's LLM Provider Metrics by title
+            if(table.title === 'LLM Provider Metrics' && table.providers){
+                console.log('Rendering custom LLM Provider table', table);
+                renderLLMProviderTable(table, tableIdx);
+                return;
+            }
+
             const card=document.createElement("div");
             card.style.cssText="display:grid; grid-template-columns:1fr 1fr; gap:1rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); overflow:hidden; grid-column-gap:0;";
 
@@ -489,8 +497,88 @@
         // Create charts after DOM is updated
         setTimeout(() => {
             tables.forEach((table, tableIdx) => {
-                createTableChart(tableIdx, table);
+                if(table.title !== 'LLM Provider Metrics'){
+                    createTableChart(tableIdx, table);
+                }
             });
+        }, 100);
+    }
+
+    function renderLLMProviderTable(table, tableIdx){
+        const card=document.createElement("div");
+        card.style.cssText="display:grid; grid-template-columns:1fr 1fr; gap:1rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); overflow:hidden;";
+
+        let rowsHtml="";
+        table.providers.forEach(p => {
+            rowsHtml+=`
+            <tr>
+              <td><strong>${p.name}</strong></td>
+              <td>${p.requests}</td>
+              <td>${p.latency} ms</td>
+              <td>${p.errors}</td>
+            </tr>`;
+        });
+
+        const tableHtml=`
+          <div style="border-right:1px solid var(--card-border);">
+            <div class="table-header">${table.title}</div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Provider</th>
+                    <th>Requests</th>
+                    <th>Latency</th>
+                    <th>Errors</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        const chartHtml=`
+          <div style="padding:1.5rem; display:flex; flex-direction:column;">
+            <h4 style="margin:0 0 1rem 0; font-size:0.9rem; color:var(--text-muted);">${table.title} Chart</h4>
+            <div style="height:350px; position:relative;">
+              <canvas id="chart_${tableIdx}"></canvas>
+            </div>
+          </div>
+        `;
+
+        card.innerHTML = tableHtml + chartHtml;
+        document.getElementById("metricsGrid").appendChild(card);
+
+        // Create chart for LLM Provider
+        setTimeout(() => {
+            const canvas = document.getElementById(`chart_${tableIdx}`);
+            if(canvas){
+                const labels = table.providers.map(p => p.name);
+                const values = table.providers.map(p => p.requests);
+                new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Requests',
+                            data: values,
+                            backgroundColor: '#3b82f6',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, datalabels: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(51,65,85,0.3)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
         }, 100);
     }
 
@@ -509,9 +597,40 @@
         const labels = table.rows.map(r => r.name || 'N/A');
         const values = table.rows.map(r => parseFloat(r.value) || 0);
 
-        // Check for Error Metrics - use exact match
-        if(table.title === 'Error Metrics'){
-            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+        // Token Metrics - Vertical Bar Chart
+        if(table.title === 'Token Metrics'){
+            const colors = ['#10b981', '#06b6d4', '#f59e0b', '#ec4899'];
+            chartInstances[idx] = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tokens',
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(51,65,85,0.3)' } }
+                    }
+                }
+            });
+            return;
+        }
+
+        // Request Metrics - Pie Chart
+        if(table.title === 'Request Metrics'){
+            const colors = ['#8b5cf6', '#3b82f6', '#14b8a6', '#f97316'];
             chartInstances[idx] = new Chart(canvas, {
                 type: 'pie',
                 data: {
@@ -527,8 +646,84 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12, color: '#94a3b8' } },
+                        legend: { position: 'bottom', labels: { boxWidth: 12, color: '#94a3b8' } },
                         datalabels: { color: '#fff', font: { weight: 'bold', size: 14 }, formatter: (val) => val }
+                    }
+                }
+            });
+            return;
+        }
+
+        // Error Metrics - Single Value + Sparkline
+        if(table.title === 'Error Metrics'){
+            const totalErrors = values.reduce((a, b) => a + b, 0);
+            chartInstances[idx] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#ef4444'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false },
+                        title: {
+                            display: true,
+                            text: `Total Errors: ${totalErrors}`,
+                            color: '#ef4444',
+                            font: { size: 24, weight: 'bold' },
+                            padding: { top: 10, bottom: 20 }
+                        }
+                    },
+                    scales: {
+                        y: { display: false },
+                        x: { display: false }
+                    }
+                }
+            });
+            return;
+        }
+
+        // Kafka Metrics - Dual Line Chart
+        if(table.title === 'Kafka Metrics'){
+            const colors = ['#c026d3', '#0ea5e9', '#84cc16', '#f43f5e'];
+            chartInstances[idx] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Kafka Metrics',
+                        data: values,
+                        borderColor: colors[0],
+                        backgroundColor: 'rgba(192,38,211,0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(51,65,85,0.3)' } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
@@ -537,17 +732,15 @@
 
         // Decide chart type based on table title
         let chartType = 'bar';
-        let chartColor = '#3b82f6';
+        let chartColor = '#64748b';
 
         if(table.title.includes('Latency')){
             chartType = 'line';
-            chartColor = '#8b5cf6';
-        } else if(table.title.includes('Token')){
-            chartType = 'bar';
-            chartColor = '#10b981';
-        } else if(table.title.includes('Benchmark')){
-            chartType = 'radar';
-            chartColor = '#f59e0b';
+            chartColor = '#6366f1';
+        } else if(table.title.includes('Cost')){
+            chartColor = '#22d3ee';
+        } else if(table.title.includes('Wrapper')){
+            chartColor = '#a855f7';
         }
 
         chartInstances[idx] = new Chart(canvas, {
